@@ -47,3 +47,7 @@ jobs:
         GOOGLE_APPLICATION_CREDENTIALS: "gcp_key.json"
       run: |
         python main.py
+    - name: 파이프라인 실행
+        run: python main.py
+        env:
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
