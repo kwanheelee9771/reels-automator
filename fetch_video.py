@@ -1,46 +1,50 @@
 import os
-import random
 import requests
-from dotenv import load_dotenv
+import random
 
-load_dotenv()
-PIXABAY_API_KEY = os.getenv("PIXABAY_API_KEY")
+def download_background_video(video_keyword):
+    """Pixabay API를 최적화하여 고품질 세로형 영상을 무작위로 다운로드합니다."""
+    api_key = os.environ.get("PIXABAY_API_KEY")
+    if not api_key:
+        print("❌ PIXABAY_API_KEY 환경 변수가 설정되지 않았습니다.")
+        return False
 
-def download_background_video(keyword="seoul"):
-    print(f"[{keyword}] 키워드로 Pixabay 세로 영상 검색 중...")
+    # 최적화 1: orientation=vertical (세로형 강제), safesearch=true (안전한 영상), per_page=15 (상위 15개 추출)
+    url = f"https://pixabay.com/api/videos/?key={api_key}&q={video_keyword}&video_type=film&orientation=vertical&safesearch=true&per_page=15"
     
-    # Pixabay Video API 호출 (세로형 orientation=vertical 지정)
-    url = f"https://pixabay.com/api/videos/?key={PIXABAY_API_KEY}&q={keyword}&video_type=film&orientation=vertical"
-    
-    response = requests.get(url)
-    if response.status_code != 200:
-        print("API 호출 에러:", response.text)
-        return False
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
         
-    data = response.json()
-    if int(data.get("totalHits", 0)) == 0:
-        print("해당 키워드의 영상을 찾을 수 없습니다.")
-        return False
-        
-    # 매번 다른 영상이 나오도록 랜덤 선택
-    video = random.choice(data["hits"])
-    
-    # 제공되는 해상도 중 large 또는 medium 사이즈 추출
-    videos = video["videos"]
-    download_link = videos.get("large", {}).get("url") or videos.get("medium", {}).get("url")
-    
-    if not download_link:
-        print("다운로드 가능한 영상 링크를 찾을 수 없습니다.")
-        return False
-        
-    print("영상 다운로드 중...")
-    video_data = requests.get(download_link)
-    
-    with open("background.mp4", "wb") as f:
-        f.write(video_data.content)
-        
-    print("성공! 새로운 background.mp4 파일이 준비되었습니다.")
-    return True
+        total_hits = int(data.get("totalHits", 0))
 
-if __name__ == "__main__":
-    download_background_video("seoul")
+        if total_hits > 0:
+            # 검색된 결과 리스트 (최대 15개)
+            hits = data.get("hits", [])
+            
+            # 최적화 2: 항상 1위가 아닌 상위 결과물 중 무작위로 하나 선택 (도배 방지)
+            selected_video = random.choice(hits)
+            
+            # 해상도가 가장 안정적인 medium 사이즈 URL 추출
+            video_url = selected_video["videos"]["medium"]["url"]
+            
+            print(f"📥 픽사베이 세로형 영상 다운로드 중... (키워드: {video_keyword}, 선택된 영상 ID: {selected_video['id']})")
+            video_response = requests.get(video_url, stream=True)
+            video_response.raise_for_status()
+            
+            local_filename = os.path.join(os.path.dirname(os.path.abspath(__file__)), "background_video.mp4")
+            
+            with open(local_filename, 'wb') as f:
+                for chunk in video_response.iter_content(chunk_size=8192):
+                    f.write(chunk)
+            
+            print("✅ 픽사베이 최적화 배경 영상 다운로드 완료")
+            return True
+        else:
+            print(f"❌ '{video_keyword}' 키워드에 대한 세로형 영상을 픽사베이에서 찾을 수 없습니다.")
+            return False
+            
+    except Exception as e:
+        print(f"❌ 픽사베이 영상 수집 중 오류 발생: {e}")
+        return False
