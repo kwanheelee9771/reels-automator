@@ -1,0 +1,6 @@
+moviepy==1.0.3
+Pillow
+openai>=1.0.0
+python-dotenv
+google-cloud-storage
+requests

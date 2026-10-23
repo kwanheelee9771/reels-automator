@@ -1,0 +1,6 @@
+gcp_key.json
+.env
+*.mp4
+*.mp3
+*.log
+__pycache__/
