@@ -1,0 +1,49 @@
+name: K-Culture Reels Automator
+
+on:
+  schedule:
+    # 매일 한국 시간 오후 7시(UTC 10:00)에 자동 실행
+    - cron: '0 10 * * *'
+  workflow_dispatch:
+    # 깃허브 웹사이트에서 수동으로 실행해볼 수 있는 버튼 활성화
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 저장소 코드 불러오기
+      uses: actions/checkout@v4
+
+    - name: 파이썬 3.10 환경 세팅 및 패키지 캐싱
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip' # 라이브러리 설치 속도 향상 및 타임아웃 방지
+
+    - name: 리눅스 OS 필수 렌더링 엔진 설치 (FFmpeg, ImageMagick, 폰트)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg imagemagick fonts-nanum
+
+    - name: 파이썬 필수 라이브러리 설치
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: GCP 보안 키 파일 생성 (Secrets에서 로드)
+      env:
+        GCP_KEY_JSON: ${{ secrets.GCP_KEY_JSON }}
+      run: |
+        echo "$GCP_KEY_JSON" > gcp_key.json
+
+    - name: 무인 파이프라인 실행 (영상 렌더링 및 인스타그램 자동 발행)
+      env:
+        # 실행 직전 0.1초 만에 검증될 5개의 필수 환경 변수 주입
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+        IG_ACCOUNT_ID: ${{ secrets.IG_ACCOUNT_ID }}
+        PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+        GOOGLE_APPLICATION_CREDENTIALS: "gcp_key.json"
+      run: |
+        python main.py
