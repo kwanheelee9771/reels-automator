@@ -102,13 +102,15 @@ def burn_subtitles(video_path="tiktok_ready.mp4", subtitle_text=None, output_pat
         txt_clip = txt_clip.set_position(('center', 'center')).set_duration(video.duration)
         final_video = CompositeVideoClip([video, txt_clip])
         
+        # 인스타그램 Meta API가 요구하는 필수 표준 규격 강제 주입
         final_video.write_videofile(
             o_path, 
             fps=30, 
             codec="libx264", 
-            audio_codec="aac",   # 4단계에서 합성한 TTS 음성 보존
-            preset="ultrafast",
-            threads=2,           # 메모리 다운(OOM) 방지
+            audio_codec="aac", 
+            preset="fast",       # ultrafast에서 fast로 원복
+            threads=2,
+            ffmpeg_params=["-pix_fmt", "yuv420p", "-movflags", "faststart"], 
             logger=None
         )
         
