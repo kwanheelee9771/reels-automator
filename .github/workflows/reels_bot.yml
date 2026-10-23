@@ -44,10 +44,7 @@ jobs:
         IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
         IG_ACCOUNT_ID: ${{ secrets.IG_ACCOUNT_ID }}
         PIXABAY_API_KEY: ${{ secrets.PIXABAY_API_KEY }}
+        RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
         GOOGLE_APPLICATION_CREDENTIALS: "gcp_key.json"
       run: |
         python main.py
-    - name: 파이프라인 실행
-        run: python main.py
-        env:
-          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
