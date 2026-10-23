@@ -39,74 +39,66 @@
 import os
 import glob
 
-# [핵심 방어 코드] MoviePy와 최신 Pillow 버전 충돌 강제 해결
+# [강력 방어] 모든 Pillow(이미지 라이브러리) 버전 호환성 강제 확보
 from PIL import Image
+try:
+    resample_method = Image.Resampling.LANCZOS
+except AttributeError:
+    resample_method = getattr(Image, 'LANCZOS', 1)
 if not hasattr(Image, 'ANTIALIAS'):
-    Image.ANTIALIAS = Image.LANCZOS
+    Image.ANTIALIAS = resample_method
 
-from moviepy.editor import VideoFileClip, AudioFileClip, ColorClip, CompositeVideoClip
+from moviepy.editor import VideoFileClip, ColorClip, CompositeVideoClip
 import moviepy.video.fx.all as vfx
 
-def process_background_for_copyright(video_path, target_duration):
-    """인스타그램 저작권 필터링 우회를 위한 시각적 변조 수행"""
+def process_background_for_copyright(video_path):
+    """인스타그램 저작권 필터링 우회를 위한 시각적 4중 변조 수행"""
     clip = VideoFileClip(video_path)
     
+    # 1. 크롭 (3%) & 2. 리사이즈
     w, h = clip.size
     crop_x = int(w * 0.03)
     crop_y = int(h * 0.03)
     clip = clip.crop(x1=crop_x, y1=crop_y, x2=w-crop_x, y2=h-crop_y)
     clip = clip.resize((1080, 1920))
     
+    # 3. 배속 (1.02배)
     clip = clip.fx(vfx.speedx, 1.02)
     
-    if clip.duration < target_duration:
-        clip = clip.fx(vfx.loop, duration=target_duration)
-    else:
-        clip = clip.subclip(0, target_duration)
-    
-    dark_overlay = ColorClip(size=(1080, 1920), color=(0,0,0)).set_opacity(0.15).set_duration(target_duration)
+    # 4. 블랙 오버레이 (15%)
+    dark_overlay = ColorClip(size=(1080, 1920), color=(0,0,0)).set_opacity(0.15).set_duration(clip.duration)
     return CompositeVideoClip([clip, dark_overlay])
 
-def make_reels_video(video_path="background_video.mp4", audio_path="tts_audio.mp3", output_path="rendered_video.mp4"):
-    """최종 영상과 오디오 합성 (오디오 파일 자동 탐색 기능 포함)"""
+# audio_path 파라미터는 4단계에서 사용하므로 무시하고 시각 효과만 렌더링
+def make_reels_video(video_path="background_video.mp4", audio_path=None, output_path="final_reels.mp4"):
+    """최종 시각 영상 렌더링 (오디오는 4단계가 전담하므로 제외)"""
     try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        v_path = os.path.join(base_dir, video_path)
-        a_path = os.path.join(base_dir, audio_path)
-        o_path = os.path.join(base_dir, output_path)
-
-        if not os.path.exists(a_path):
-            mp3_files = glob.glob(os.path.join(base_dir, "*.mp3"))
-            if mp3_files:
-                a_path = mp3_files[0]
-            else:
-                print("❌ 폴더 내에 오디오(.mp3) 파일이 존재하지 않습니다.")
-                return False
+        # 깃허브 서버 어디서 실행되든 최상단 루트에 파일을 보장하는 절대 경로 설정
+        v_path = os.path.abspath(video_path)
+        o_path = os.path.abspath(output_path)
 
         if not os.path.exists(v_path):
             print(f"❌ 배경 영상이 존재하지 않습니다: {v_path}")
             return False
 
-        print(f"🎬 렌더링 시작... (영상: {os.path.basename(v_path)}, 오디오: {os.path.basename(a_path)})")
-        audio = AudioFileClip(a_path)
-        final_visuals = process_background_for_copyright(v_path, audio.duration)
-        final_video = final_visuals.set_audio(audio)
+        print(f"🎬 저작권 회피 렌더링 시작... (출력 파일: {o_path})")
+        final_visuals = process_background_for_copyright(v_path)
         
-        final_video.write_videofile(
+        # 깃허브 2코어 서버 맞춤형 렌더링 세팅 (오디오 제외)
+        final_visuals.write_videofile(
             o_path, 
             fps=30, 
             codec="libx264", 
-            audio_codec="aac", 
+            audio=False,         # 4단계와의 충돌을 막기 위해 음성 병합 안 함
             preset="ultrafast", 
-            threads=4,
+            threads=2,           # 메모리 다운(OOM) 방지
             logger=None
         )
         
-        audio.close()
-        final_video.close()
-        print("✅ 1차 렌더링 완료")
+        final_visuals.close()
+        print("✅ 3단계: 시각적 필터 렌더링 완료")
         return True
         
     except Exception as e:
-        print(f"❌ 렌더링 중 오류 발생: {e}")
+        print(f"❌ 3단계 렌더링 중 오류 발생: {e}")
         return False

@@ -43,28 +43,33 @@
 import os
 import glob
 
-# [핵심 방어 코드] MoviePy와 최신 Pillow 버전 충돌 강제 해결
+# [강력 방어] 모든 Pillow 버전 호환성 강제 확보
 from PIL import Image
+try:
+    resample_method = Image.Resampling.LANCZOS
+except AttributeError:
+    resample_method = getattr(Image, 'LANCZOS', 1)
 if not hasattr(Image, 'ANTIALIAS'):
-    Image.ANTIALIAS = Image.LANCZOS
+    Image.ANTIALIAS = resample_method
 
 from moviepy.editor import VideoFileClip, TextClip, CompositeVideoClip
 
-def burn_subtitles(video_path="rendered_video.mp4", subtitle_text=None, output_path="final_reels_with_subtitles.mp4"):
+def burn_subtitles(video_path="tiktok_ready.mp4", subtitle_text=None, output_path="final_reels_with_subtitles.mp4"):
     """블랙 필터가 씌워진 영상 위에 가독성을 극대화한 자막 합성"""
     try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        v_path = os.path.join(base_dir, video_path)
-        o_path = os.path.join(base_dir, output_path)
+        # 루트 절대 경로 강제 할당
+        v_path = os.path.abspath(video_path)
+        o_path = os.path.abspath(output_path)
         
         if not os.path.exists(v_path):
-            print(f"❌ 1차 렌더링된 영상이 없습니다: {v_path}")
+            print(f"❌ 4단계 완료 영상(tiktok_ready.mp4)을 찾을 수 없습니다: {v_path}")
             return False
             
+        # 대본 파일 자동 탐색
         if subtitle_text is None:
-            txt_files = glob.glob(os.path.join(base_dir, "*.txt"))
+            txt_files = glob.glob(os.path.join(os.path.dirname(v_path), "*.txt"))
             if txt_files:
-                script_files = [f for f in txt_files if "requirements" not in f]
+                script_files = [f for f in txt_files if "requirements" not in os.path.basename(f)]
                 if script_files:
                     with open(script_files[0], "r", encoding="utf-8") as f:
                         subtitle_text = f.read().strip()
@@ -73,14 +78,15 @@ def burn_subtitles(video_path="rendered_video.mp4", subtitle_text=None, output_p
             else:
                 subtitle_text = ""
 
-        print(f"✍️ 자막 합성 시작... (자막 길이: {len(subtitle_text)}자)")
+        print(f"✍️ 6단계: 자막 합성 시작... (대상 파일: {v_path})")
         video = VideoFileClip(v_path)
         
         if not subtitle_text or subtitle_text.strip() == "":
-            print("⚠️ 적용할 자막 텍스트가 없어 배경 영상만 그대로 저장합니다.")
-            video.write_videofile(o_path, codec="libx264", audio_codec="aac")
+            print("⚠️ 적용할 자막 텍스트가 없어 원본을 그대로 저장합니다.")
+            video.write_videofile(o_path, codec="libx264", audio_codec="aac", threads=2)
             return True
 
+        # 자막 스타일링 강제 (크기 85, 볼드, 두꺼운 테두리)
         txt_clip = TextClip(
             subtitle_text,
             fontsize=85,              
@@ -100,15 +106,15 @@ def burn_subtitles(video_path="rendered_video.mp4", subtitle_text=None, output_p
             o_path, 
             fps=30, 
             codec="libx264", 
-            audio_codec="aac", 
+            audio_codec="aac",   # 4단계에서 합성한 TTS 음성 보존
             preset="ultrafast",
-            threads=4,
+            threads=2,           # 메모리 다운(OOM) 방지
             logger=None
         )
         
         video.close()
         final_video.close()
-        print("✅ 최종 자막 합성 및 렌더링 완료")
+        print("✅ 6단계: 최종 자막 릴스 렌더링 완료")
         return True
 
     except Exception as e:
