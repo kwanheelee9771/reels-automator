@@ -3,7 +3,7 @@ name: K-Culture Reels Automator
 on:
   schedule:
     # 매일 한국 시간 오후 7시(UTC 10:00)에 자동 실행
-    - cron: '35 10 * * *'
+    - cron: '35 8 * * *'
   workflow_dispatch:
     # 깃허브 웹사이트에서 수동으로 실행해볼 수 있는 버튼 활성화
 
