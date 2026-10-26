@@ -2,10 +2,9 @@ name: K-Culture Reels Automator
 
 on:
   schedule:
-    # 매일 한국 시간 오후 7시(UTC 10:00)에 자동 실행
+    # 매일 한국 시간 오후 5시 35분(UTC 09:35)에 자동 실행
     - cron: '35 8 * * *'
   workflow_dispatch:
-    # 깃허브 웹사이트에서 수동으로 실행해볼 수 있는 버튼 활성화
 
 jobs:
   build-and-publish:
@@ -19,7 +18,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
-        cache: 'pip' # 라이브러리 설치 속도 향상 및 타임아웃 방지
+        cache: 'pip'
 
     - name: 리눅스 OS 필수 렌더링 엔진 설치 (FFmpeg, ImageMagick, 폰트)
       run: |
@@ -39,7 +38,6 @@ jobs:
 
     - name: 무인 파이프라인 실행 (영상 렌더링 및 인스타그램 자동 발행)
       env:
-        # 실행 직전 0.1초 만에 검증될 5개의 필수 환경 변수 주입
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
         IG_ACCOUNT_ID: ${{ secrets.IG_ACCOUNT_ID }}
